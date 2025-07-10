@@ -113,11 +113,3 @@ except KeyboardInterrupt:
 finally:
     server_socket.close()
 
-def main():
-    app = QApplication(sys.argv)
-    client = ChatClient()
-    client.show()
-    sys.exit(app.exec_())
-
-if __name__ == '__main__':
-    main()
