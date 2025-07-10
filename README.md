@@ -15,7 +15,7 @@
 
 Você verá:
 ```
-Pedido de nome de usuário
-Comandos disponíveis: /create, /join, /list, /leave
+Bem-vindo(a)!
+Use /create, /join, /list, /leave para entrar numa sala de chat.
 ```
 Mensagens só serão enviadas se você estiver em uma sala

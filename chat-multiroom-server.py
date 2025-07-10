@@ -30,7 +30,7 @@ def handle_client(client_socket):
         username = client_socket.recv(1024).decode(ENCODING).strip()
         clients[client_socket] = username
 
-        client_socket.send("Bem-vindo(a)! Use /create, /join, /list, /leave para entrar numa sala de chat.\n".encode(ENCODING))
+        client_socket.send("Bem-vindo(a)!\nUse /create, /join, /list, /leave para entrar numa sala de chat.\n".encode(ENCODING))
 
         while True:
             data = client_socket.recv(1024).decode(ENCODING)
