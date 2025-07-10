@@ -1,0 +1,42 @@
+import socket
+import threading
+
+# Configurações do servidor
+HOST = '127.0.0.1'
+PORT = 12345
+ENCODING = 'utf-8'
+
+# Funções auxiliares
+def receive_messages(sock):
+    while True:
+        try:
+            msg = sock.recv(1024).decode(ENCODING)
+            if msg:
+                print(msg)
+            else:
+                break
+        except:
+            print("[Erro] Conexão encerrada pelo servidor.")
+            break
+
+def send_messages(sock):
+    while True:
+        try:
+            msg = input()
+            sock.send(msg.encode(ENCODING))
+        except:
+            break
+
+# Serviço principal
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+try:
+    client_socket.connect((HOST, PORT))
+    print(f"Conectado ao servidor em {HOST}:{PORT}")
+
+    threading.Thread(target=receive_messages, args=(client_socket,), daemon=True).start()
+    send_messages(client_socket)
+
+except ConnectionRefusedError:
+    print("[Erro] Não foi possível conectar ao servidor. Certifique-se de que ele está rodando.")
+finally:
+    client_socket.close()
