@@ -69,3 +69,12 @@ class ChatClient(QWidget):
         left_panel.addWidget(self.refresh_btn)
 
         self.join_btn = QPushButton("Entrar na Sala")
+
+def main():
+    app = QApplication(sys.argv)
+    client = ChatClient()
+    client.show()
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()

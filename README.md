@@ -25,6 +25,7 @@
 ```
 ~$ poetry run python3 chat_server_multisalas.py
 ```
+
 ### 6) Em outro terminal, execute este cliente:
 
 ```
