@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "./chat_",
+        "./chat_",
+        "./chat_"
+    ]
+}
