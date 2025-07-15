@@ -1,3 +1,5 @@
+import json
+import os
 import socket
 import select
 import threading
@@ -11,10 +13,24 @@ ENCODING = 'utf-8'
 clients = {}  # socket -> username
 rooms = {}    # room_name -> uma lista de sockets
 user_rooms = {}  # socket -> room_name
-
+authenticated = set()  # sockets autenticados
 lock = threading.Lock()
 
 # Funções auxiliares
+
+def load_users():
+    if os.path.exists(USER_DB):
+        with open(USER_DB, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_users(users):
+    with open(USER_DB, 'w') as f:
+        json.dump(users, f)
+
+def hash_password(password):
+    return hashlib.sha256(password.encode(ENCODING)).hexdigest()
+
 def broadcast(message, room, sender_socket):
     with lock:
         for client in rooms.get(room, set()):
@@ -68,6 +84,7 @@ def handle_command(sock, command):
         with lock:
             rooms.setdefault(room, set())
         sock.send(f"Sala '{room}' criada.\n".encode(ENCODING))
+        print(f"Sala '{room}' criada.\n")
 
     elif cmd == "/join" and len(args) > 1:
         room = args[1]
@@ -77,6 +94,7 @@ def handle_command(sock, command):
                 return
             rooms[room].add(sock)
             user_rooms[sock] = room
+        broadcast(f"{clients[client_socket]} entrou na sala.", room, sock)
         sock.send(f"Você entrou em'{room}'.\n".encode(ENCODING))
 
     elif cmd == "/leave":
@@ -85,6 +103,7 @@ def handle_command(sock, command):
             if room and sock in rooms[room]:
                 rooms[room].remove(sock)
         sock.send("Você saiu da sala.\n".encode(ENCODING))
+        broadcast(f"{clients[client_socket]} saiu da sala.", room, sock)
 
     else:
         sock.send("Comando desconhecido ou argumentos inválidos.\n".encode(ENCODING))
@@ -96,6 +115,7 @@ def disconnect_client(sock):
             room = user_rooms.pop(sock, None)
             if room:
                 rooms[room].discard(sock)
+                broadcast(f"{username} saiu da sala.", room, sock)
         sock.close()
 
 # Serviço principal
