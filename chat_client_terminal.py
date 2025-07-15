@@ -1,7 +1,10 @@
 import socket
 import threading
+import sys
 
 # Configurações do servidor
+#HOST = '0.tcp.sa.ngrok.io'
+#PORT = int(sys.argv[1]) # Porta varia a cada nova abertura do servidor.
 HOST = '127.0.0.1'
 PORT = 12345
 ENCODING = 'utf-8'

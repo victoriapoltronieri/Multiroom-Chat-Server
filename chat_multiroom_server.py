@@ -1,115 +1,136 @@
 import socket
-import select
 import threading
+import json
+import hashlib
+import os
 
-# Configuração do servidor
+#HOST = '0.0.0.0'
+#PORT = 12345
 HOST = '127.0.0.1'
 PORT = 12345
 ENCODING = 'utf-8'
+USER_DB = 'users.json'
 
-# Dados dos chats
-clients = {}  # socket -> username
-rooms = {}    # room_name -> uma lista de sockets
-user_rooms = {}  # socket -> room_name
-
+clients = {}           # socket -> username
+authenticated = set()  # sockets autenticados
+rooms = {}             # nome -> set de sockets
+user_rooms = {}        # socket -> nome da sala
 lock = threading.Lock()
 
-# Funções auxiliares
-def broadcast(message, room, sender_socket):
+def load_users():
+    if os.path.exists(USER_DB):
+        with open(USER_DB, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_users(users):
+    with open(USER_DB, 'w') as f:
+        json.dump(users, f)
+
+def hash_password(password):
+    return hashlib.sha256(password.encode(ENCODING)).hexdigest()
+
+def broadcast(msg, room, sender=None):
     with lock:
         for client in rooms.get(room, set()):
-            if client != sender_socket:
+            if client != sender:
                 try:
-                    client.send(message.encode(ENCODING))
+                    client.send(msg.encode(ENCODING))
                 except:
                     pass
 
-def handle_client(client_socket):
+def handle_client(sock):
+    sock.send("Bem-vindo. Use /register ou /login\n".encode(ENCODING))
+    users = load_users()
+
     try:
-        client_socket.send("Digite seu nome: ".encode(ENCODING))
-        username = client_socket.recv(1024).decode(ENCODING).strip()
-        clients[client_socket] = username
-
-        client_socket.send("Bem-vindo(a)!\nUse /create, /join, /list, /leave para entrar numa sala de chat.\n".encode(ENCODING))
-
         while True:
-            data = client_socket.recv(1024).decode(ENCODING)
+            data = sock.recv(1024).decode(ENCODING)
             if not data:
                 break
 
-            if data.startswith("/"):
-                handle_command(client_socket, data.strip())
-            else:
-                room = user_rooms.get(client_socket)
-                if room:
-                    msg = f"[{clients[client_socket]}@{room}]: {data}"
-                    broadcast(msg, room, client_socket)
+            if sock not in authenticated:
+                if data.startswith("/register"):
+                    _, user, pwd = data.strip().split()
+                    if user in users:
+                        sock.send("Usuário já existe.\n".encode(ENCODING))
+                    else:
+                        users[user] = hash_password(pwd)
+                        save_users(users)
+                        sock.send("Usuário registrado com sucesso.\n".encode(ENCODING))
+
+                elif data.startswith("/login"):
+                    _, user, pwd = data.strip().split()
+                    if user in users and users[user] == hash_password(pwd):
+                        authenticated.add(sock)
+                        clients[sock] = user
+                        sock.send("Login bem-sucedido.\n".encode(ENCODING))
+                    else:
+                        sock.send("Login inválido.\n".encode(ENCODING))
                 else:
-                    client_socket.send("Se junte a uma sala de bate-papo para trocar mensagens.\n".encode(ENCODING))
+                    sock.send("Comando inválido. Use /register ou /login.\n".encode(ENCODING))
+                continue
+
+            if data.startswith("/list"):
+                room_list = ", ".join(rooms.keys())
+                sock.send(f"Rooms: {room_list}\n".encode(ENCODING))
+
+            elif data.startswith("/create"):
+                _, room = data.strip().split()
+                with lock:
+                    rooms.setdefault(room, set())
+                sock.send(f"Sala '{room}' criada.\n".encode(ENCODING))
+
+            elif data.startswith("/join"):
+                _, room = data.strip().split()
+                with lock:
+                    if room not in rooms:
+                        sock.send("Sala inexistente.\n".encode(ENCODING))
+                    else:
+                        rooms[room].add(sock)
+                        user_rooms[sock] = room
+                        broadcast(f"🔔 {clients[sock]} entrou na sala.", room, sock)
+                        sock.send(f"Você entrou na sala '{room}'.\n".encode(ENCODING))
+
+            elif data.startswith("/leave"):
+                with lock:
+                    room = user_rooms.pop(sock, None)
+                    if room and sock in rooms[room]:
+                        rooms[room].remove(sock)
+                        broadcast(f"🔕 {clients[sock]} saiu da sala.", room, sock)
+                sock.send("Você saiu da sala.\n".encode(ENCODING))
+
+            else:
+                room = user_rooms.get(sock)
+                if room:
+                    msg = f"[{clients[sock]}@{room}]: {data}"
+                    broadcast(msg, room, sock)
+                else:
+                    sock.send("Entre em uma sala com /join para enviar mensagens.\n".encode(ENCODING))
 
     except:
         pass
     finally:
-        disconnect_client(client_socket)
-
-def handle_command(sock, command):
-    args = command.split()
-    if not args:
-        return
-    
-    cmd = args[0]
-
-    if cmd == "/list":
-        room_list = ", ".join(rooms.keys())
-        sock.send(f"Salas: {room_list}\n".encode(ENCODING))
-
-    elif cmd == "/create" and len(args) > 1:
-        room = args[1]
         with lock:
-            rooms.setdefault(room, set())
-        sock.send(f"Sala '{room}' criada.\n".encode(ENCODING))
-
-    elif cmd == "/join" and len(args) > 1:
-        room = args[1]
-        with lock:
-            if room not in rooms:
-                sock.send("Ops! Essa sala não existe.\n".encode(ENCODING))
-                return
-            rooms[room].add(sock)
-            user_rooms[sock] = room
-        sock.send(f"Você entrou em'{room}'.\n".encode(ENCODING))
-
-    elif cmd == "/leave":
-        with lock:
-            room = user_rooms.pop(sock, None)
-            if room and sock in rooms[room]:
-                rooms[room].remove(sock)
-        sock.send("Você saiu da sala.\n".encode(ENCODING))
-
-    else:
-        sock.send("Comando desconhecido ou argumentos inválidos.\n".encode(ENCODING))
-
-def disconnect_client(sock):
-    with lock:
-        if sock in clients:
-            username = clients.pop(sock)
+            user = clients.pop(sock, None)
             room = user_rooms.pop(sock, None)
             if room:
                 rooms[room].discard(sock)
+                broadcast(f"🔕 {user} saiu da sala.", room, sock)
+            authenticated.discard(sock)
         sock.close()
 
-# Serviço principal
+# === MAIN ===
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind((HOST, PORT))
 server_socket.listen()
-print(f"Servidor rodando na porta: {HOST}:{PORT}")
+print(f"Servidor rodando em {HOST}:{PORT}")
 
 try:
     while True:
         client_socket, addr = server_socket.accept()
         threading.Thread(target=handle_client, args=(client_socket,), daemon=True).start()
 except KeyboardInterrupt:
-    print("\nServidor desligando.")
+    print("Encerrando o servidor...")
 finally:
     server_socket.close()
-

@@ -5,6 +5,9 @@ description = "Second project of the Computers Network course"
 authors = ["vpoltron <victoriapoltronieri@hotmail.com>"]
 readme = "README.md"
 
+[tool.poetry.scripts]
+chat = "main:main"
+
 [tool.poetry.dependencies]
 python = "^3.8"
 pyqt5 = "^5.15.11"
