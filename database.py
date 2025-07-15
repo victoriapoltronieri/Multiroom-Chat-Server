@@ -66,6 +66,13 @@ def get_user_hash(username):
     conn.close()
     return result[0] if result else None
 
+def check_user_credentials(username, password):
+    """Verifica as credenciais de um usuário comparando a senha fornecida com o hash armazenado."""
+    stored_hash = get_user_hash(username)
+    if not stored_hash:
+        return False
+    return stored_hash == hash_password(password)
+
 def create_room(name, password=None):
     """
     Cria uma nova sala no banco de dados.
