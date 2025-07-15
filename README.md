@@ -14,7 +14,7 @@
 
 - **TLS/SSL (ssl, stdlib)** – cifra o canal TCP (certificado autoassinado em desenvolvimento).
 
-- **Interface de Usuário** – cliente gráfico opcional construído com PyQt5; versão em terminal continua funcionando sem essa dependência.
+- **Interface de Usuário** – cliente gráfico construído com PyQt5; versão em terminal continua funcionando sem essa dependência.
 
 ## Bibliotecas/Frameworks utilizados
 - **PyQt5** – constrói a GUI (widgets, layouts, eventos).

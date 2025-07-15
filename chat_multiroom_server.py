@@ -3,29 +3,30 @@ import threading
 import json
 import hashlib
 import os
+import database # Importa o módulo de banco de dados
 
-#HOST = '0.0.0.0'
-#PORT = 12345
-HOST = '127.0.0.1'
+HOST = '0.0.0.0'
 PORT = 12345
+# HOST = '127.0.0.1'
+# PORT = 12345
 ENCODING = 'utf-8'
-USER_DB = 'users.json'
+# USER_DB = 'users.json'
 
 clients = {}           # socket -> username
 authenticated = set()  # sockets autenticados
-rooms = {}             # nome -> set de sockets
+rooms = {}             # nome -> set de socket
 user_rooms = {}        # socket -> nome da sala
 lock = threading.Lock()
 
-def load_users():
-    if os.path.exists(USER_DB):
-        with open(USER_DB, 'r') as f:
-            return json.load(f)
-    return {}
+# def load_users():
+#     if os.path.exists(USER_DB):
+#         with open(USER_DB, 'r') as f:
+#             return json.load(f)
+#     return {}
 
-def save_users(users):
-    with open(USER_DB, 'w') as f:
-        json.dump(users, f)
+# def save_users(users):
+#     with open(USER_DB, 'w') as f:
+#         json.dump(users, f)
 
 def hash_password(password):
     return hashlib.sha256(password.encode(ENCODING)).hexdigest()
@@ -41,7 +42,6 @@ def broadcast(msg, room, sender=None):
 
 def handle_client(sock):
     sock.send("Bem-vindo. Use /register ou /login\n".encode(ENCODING))
-    users = load_users()
 
     try:
         while True:
@@ -52,12 +52,11 @@ def handle_client(sock):
             if sock not in authenticated:
                 if data.startswith("/register"):
                     _, user, pwd = data.strip().split()
-                    if user in users:
-                        sock.send("Usuário já existe.\n".encode(ENCODING))
-                    else:
-                        users[user] = hash_password(pwd)
-                        save_users(users)
+                    password_h = hash_password(pwd)
+                    if database.add_user(user, password_h):
                         sock.send("Usuário registrado com sucesso.\n".encode(ENCODING))
+                    else:
+                        sock.send("Usuário já existe.\n".encode(ENCODING))
 
                 elif data.startswith("/login"):
                     _, user, pwd = data.strip().split()
@@ -124,6 +123,9 @@ def handle_client(sock):
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind((HOST, PORT))
 server_socket.listen()
+
+# Inicializa o banco de dados
+database.init_db()
 print(f"Servidor rodando em {HOST}:{PORT}")
 
 try:
