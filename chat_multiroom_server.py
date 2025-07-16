@@ -49,10 +49,19 @@ def broadcast(msg, room, sender=None):
 
 def _handle_register(sock):
     sock.send("\n--- REGISTRAR NOVO USUÁRIO ---\n".encode(ENCODING))
-    sock.send("Digite o nome de usuário: ".encode(ENCODING))
-    user = sock.recv(1024).decode(ENCODING).strip()
-    sock.send("Digite a senha: ".encode(ENCODING))
-    pwd = sock.recv(1024).decode(ENCODING).strip()
+    sock.send("Digite o usuário e a senha, separados por espaço (ex: novo_usuario 12345): ".encode(ENCODING))
+    
+    # Recebe a resposta do cliente (ex: "novo_usuario 12345")
+    response = sock.recv(1024).decode(ENCODING).strip()
+    
+    try:
+        # Divide a string recebida em duas partes no primeiro espaço encontrado.
+        user, pwd = response.split(' ', 1)
+    except ValueError:
+        # Se o cliente não digitar no formato esperado (ex: sem espaço), envia um erro.
+        sock.send("\nFormato inválido. O usuário e a senha devem ser separados por espaço.\n".encode(ENCODING))
+        return
+
     if database.add_user(user, pwd):
         sock.send("\nUsuário registrado com sucesso!\n".encode(ENCODING))
     else:
@@ -60,10 +69,20 @@ def _handle_register(sock):
 
 def _handle_login(sock):
     sock.send("\n--- FAZER LOGIN ---\n".encode(ENCODING))
-    sock.send("Digite o nome de usuário: ".encode(ENCODING))
-    user = sock.recv(1024).decode(ENCODING).strip()
-    sock.send("Digite a senha: ".encode(ENCODING))
-    pwd = sock.recv(1024).decode(ENCODING).strip()
+    # Pede ao cliente para digitar usuário e senha em uma única linha.
+    sock.send("Digite seu usuário e senha, separados por espaço (ex: usuario_existente 12345): ".encode(ENCODING))
+    
+    # Recebe a resposta do cliente.
+    response = sock.recv(1024).decode(ENCODING).strip()
+
+    try:
+        # Tenta dividir a resposta em usuário e senha.
+        user, pwd = response.split(' ', 1)
+    except ValueError:
+        # Se o formato for inválido, envia um erro e falha o login.
+        sock.send("\nFormato inválido. Login falhou.\n".encode(ENCODING))
+        return False
+
     if database.check_user_credentials(user, pwd):
         authenticated.add(sock)
         clients[sock] = user
@@ -83,15 +102,38 @@ def _handle_list_rooms(sock):
 
 def _handle_create_room(sock):
     sock.send("\n--- CRIAR NOVA SALA ---\n".encode(ENCODING))
-    sock.send("Digite o nome da nova sala: ".encode(ENCODING))
-    room_name = sock.recv(1024).decode(ENCODING).strip()
+    # Pede ao cliente para digitar os detalhes da sala em uma única linha.
+    # Formato para sala pública: nome_da_sala n
+    # Formato para sala privada: nome_da_sala s senha_da_sala
+    sock.send("Use o formato: <nome_sala> <s/n para privada> [senha_se_privada]\n".encode(ENCODING))
+    sock.send("Exemplos:\n".encode(ENCODING))
+    sock.send("  - Sala pública: public_room n\n".encode(ENCODING))
+    sock.send("  - Sala privada: private_room s 12345\n".encode(ENCODING))
+    sock.send("Sua entrada: ".encode(ENCODING))
 
-    sock.send("Esta sala será privada? (s/n): ".encode(ENCODING))
-    is_private_choice = sock.recv(1024).decode(ENCODING).strip().lower()
+    # Recebe a resposta completa do cliente.
+    response = sock.recv(1024).decode(ENCODING).strip()
+    parts = response.split()
+
+    # Validação básica da entrada.
+    if len(parts) < 2:
+        sock.send("\nFormato inválido. Você deve fornecer pelo menos o nome da sala e 's' ou 'n'.\n".encode(ENCODING))
+        return
+
+    room_name = parts[0]
+    is_private_choice = parts[1].lower()
     room_password = None
+
     if is_private_choice == 's':
-        sock.send("Digite a senha para a sala privada: ".encode(ENCODING))
-        room_password = sock.recv(1024).decode(ENCODING).strip()
+        if len(parts) < 3:
+            # Se a sala for privada, uma senha é obrigatória.
+            sock.send("\nFormato inválido. Salas privadas exigem uma senha.\n".encode(ENCODING))
+            return
+        room_password = parts[2]
+    elif is_private_choice != 'n':
+        # A segunda parte deve ser 's' ou 'n'.
+        sock.send("\nOpção inválida para privacidade. Use 's' para sim ou 'n' para não.\n".encode(ENCODING))
+        return
 
     with lock:
         if database.create_room(room_name, room_password):
@@ -100,11 +142,25 @@ def _handle_create_room(sock):
         else:
             sock.send(f"\nErro: Sala '{room_name}' já existe ou ocorreu um problema na criação.\n".encode(ENCODING))
 
+
 def _handle_join_room(sock):
     sock.send("\n--- ENTRAR EM SALA ---\n".encode(ENCODING))
-    sock.send("Digite o nome da sala que deseja entrar: ".encode(ENCODING))
-    room_name = sock.recv(1024).decode(ENCODING).strip()
-    room_password = None
+    # Pede ao cliente para digitar o nome da sala e a senha (se necessária) em uma linha.
+    sock.send("Digite o nome da sala e a senha (se for privada), separados por espaço:\n".encode(ENCODING))
+    sock.send("Ex: minha_sala_privada 12345\n".encode(ENCODING))
+    sock.send("Sua entrada: ".encode(ENCODING))
+
+    # Recebe a resposta do cliente.
+    response = sock.recv(1024).decode(ENCODING).strip()
+    parts = response.split()
+
+    if not parts:
+        sock.send("\nEntrada inválida.\n".encode(ENCODING))
+        return False
+
+    room_name = parts[0]
+    # A senha é a segunda parte, se existir. Se não, é None.
+    user_provided_password = parts[1] if len(parts) > 1 else None
 
     with lock:
         room_details = database.get_room_details(room_name)
@@ -115,19 +171,24 @@ def _handle_join_room(sock):
         _, is_private, stored_password_hash = room_details
 
         if is_private:
-            sock.send("Esta sala é privada. Digite a senha: ".encode(ENCODING))
-            room_password = sock.recv(1024).decode(ENCODING).strip()
-            if database.hash_password(room_password) != stored_password_hash:
+            # Se a sala é privada, a senha é obrigatória.
+            if user_provided_password is None:
+                sock.send("\nErro: Esta sala é privada e requer uma senha.\n".encode(ENCODING))
+                return False
+            # Compara a senha fornecida com a senha armazenada.
+            if database.hash_password(user_provided_password) != stored_password_hash:
                 sock.send("\nErro: Senha incorreta para esta sala.\n".encode(ENCODING))
                 return False
         
-        # Se o usuário já estiver em uma sala, sai dela primeiro
+        # Se o usuário já estiver em uma sala, remove-o da sala antiga primeiro.
         if sock in user_rooms:
             _handle_leave_room(sock)
 
-        if room_name not in rooms: # Sala existe no DB mas não está ativa (ninguém nela)
-            rooms[room_name] = set() # Ativa a sala
+        # Ativa a sala se for a primeira pessoa a entrar.
+        if room_name not in rooms:
+            rooms[room_name] = set()
         
+        # Adiciona o usuário à nova sala.
         rooms[room_name].add(sock)
         user_rooms[sock] = room_name
         broadcast(f"{clients[sock]} entrou na sala.", room_name, sock)
