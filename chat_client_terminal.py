@@ -1,6 +1,7 @@
 import socket
 import threading
 import sys
+import os # Adicionado para os._exit()
 
 # Configurações do servidor
 HOST = '0.tcp.sa.ngrok.io'
@@ -14,13 +15,12 @@ def receive_messages(sock):
     while True:
         try:
             msg = sock.recv(1024).decode(ENCODING)
-            if msg:
-                print(msg)
-            else:
-                break
-        except:
-            print("[Erro] Conexão encerrada pelo servidor.")
-            break
+            if not msg:
+                os._exit(0) # Termina o processo do cliente com sucesso
+            print(msg, end='')
+        except Exception as e:
+            print(f"Erro ao receber mensagem: {e}")
+            os._exit(1) # Termina o processo do cliente com erro
 
 def send_messages(sock):
     while True:
