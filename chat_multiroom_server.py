@@ -1,35 +1,20 @@
 import socket
 import threading
 import json
-# import hashlib
 import os
-import database # Importa o módulo de banco de dados
+import database
 
 HOST = '0.0.0.0'
 PORT = 12345
 # HOST = '127.0.0.1'
 # PORT = 12345
 ENCODING = 'utf-8'
-# USER_DB = 'users.json'
 
 clients = {}           # socket -> username
 authenticated = set()  # sockets autenticados
 rooms = {}             # nome -> set de socket (clientes ativos na sala)
 user_rooms = {}        # socket -> nome da sala
 lock = threading.Lock()
-
-# def load_users():
-#     if os.path.exists(USER_DB):
-#         with open(USER_DB, 'r') as f:
-#             return json.load(f)
-#     return {}
-
-# def save_users(users):
-#     with open(USER_DB, 'w') as f:
-#         json.dump(users, f)
-
-# def hash_password(password):
-#     return hashlib.sha256(password.encode(ENCODING)).hexdigest()
 
 def broadcast(msg, room, sender=None):
     """
@@ -285,19 +270,24 @@ Sua escolha:
                     sock.send("\nOpção inválida. Por favor, escolha 1 ou 2.\n".encode(ENCODING))
             
             elif current_state == "MAIN_MENU":
-                menu_message_authenticated = """
-----------------------------------------
-|        Menu Principal                |
-----------------------------------------
-| 1. Listar Salas                      |
-| 2. Criar Sala                        |
-| 3. Entrar em Sala                    |
-| 4. Sair da Sala Atual                |
-| 5. Sair (Desconectar)                |
-----------------------------------------
-Sua escolha: 
-""".encode(ENCODING)
-                sock.send(menu_message_authenticated)
+                # Constrói o menu dinamicamente.
+                menu_options = [
+                    "1. Listar Salas",
+                    "2. Criar Sala",
+                    "3. Entrar em Sala",
+                    "4. Sair da Sala Atual",
+                    "5. Sair (Desconectar)"
+                ]
+                # Se o usuário estiver em uma sala, adiciona a opção para voltar.
+                if sock in user_rooms:
+                    menu_options.insert(5, "6. Voltar para o Chat")
+
+                menu_header = "\n----------------------------------------\n|        Menu Principal                |\n----------------------------------------\n"
+                menu_body = "\n".join([f"| {opt:<36} |" for opt in menu_options])
+                menu_footer = "\n----------------------------------------\nSua escolha: "
+                
+                menu_message = (menu_header + menu_body + menu_footer).encode(ENCODING)
+                sock.send(menu_message)
 
                 choice = sock.recv(1024).decode(ENCODING).strip()
 
@@ -313,6 +303,8 @@ Sua escolha:
                         _handle_leave_room(sock)
                 elif choice == '5': # Sair (Desconectar)
                     break # Sai do loop e desconecta o cliente
+                elif choice == '6' and sock in user_rooms: # Voltar para o Chat
+                    current_state = "IN_CHAT_ROOM"
                 else:
                     sock.send("\nOpção inválida. Tente novamente.\n".encode(ENCODING))
             
