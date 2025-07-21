@@ -1,44 +1,19 @@
-import subprocess
-import time
 import os
 import sys
-import socket
-import threading
 
 # Define o caminho para o diretório do projeto
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 SERVER_PATH = os.path.join(PROJECT_ROOT, 'chat_multiroom_server.py')
 CLIENT_PATH = os.path.join(PROJECT_ROOT, 'chat_client_terminal.py')
 
-SERVER_PORT = 12345 # Porta definida no chat_multiroom_server.py
-HOST = '0.0.0.0' # Host padrão para conexão local
-
-def start_server():    
-    # Comando para rodar o servidor usando poetry
-    command = [sys.executable, SERVER_PATH]
-    
-    server_process = subprocess.Popen(
-        command,
-        cwd=PROJECT_ROOT
-    )
-    print(f"Servidor iniciado com PID: {server_process.pid}")
-    print(f"Aguardando 2 segundos para o servidor iniciar completamente...")
-    time.sleep(2)
-
-    # Verifica se o processo do servidor encerrou prematuramente
-    if server_process.poll() is not None:
-        if server_process.returncode != 0:
-            print(f"[ERRO] O servidor encerrou inesperadamente com código de saída {server_process.returncode}.")
-            return None # Indica falha na inicialização
-    return server_process
-
-
-
 def main():
-    server_proc = None
-    try:
-        while True:
-            print("""
+    """
+    Este script atua como um lançador. Ele apresenta um menu e, em seguida,
+    substitui seu próprio processo pelo processo do servidor ou do cliente,
+    entregando o controle total do terminal para o script escolhido.
+    """
+    while True:
+        print("""
 ----------------------------------------
 |        Menu Principal                |
 ----------------------------------------
@@ -46,57 +21,44 @@ def main():
 | 2. Iniciar Cliente                   |
 | 3. Sair                              |
 ----------------------------------------""")
+        choice = input("Escolha uma opção: ")
+
+        if choice == '1':
+            print("Iniciando o servidor... O terminal será dedicado a ele.")
             try:
-                choice = input("Escolha uma opção: ")
-                choice_int = int(choice)
-                if choice_int < 1 or choice_int > 3:
-                    raise ValueError
-            except ValueError:
-                print("Opção inválida. Por favor, digite 1, 2 ou 3.")
+                # Constrói os argumentos para a chamada de sistema.
+                # O primeiro argumento é o caminho para o executável (python).
+                # O segundo é uma lista que começa com o nome do programa
+                # e é seguida pelos argumentos do script.
+                args = [sys.executable, SERVER_PATH]
+                os.execv(sys.executable, args)
+            except OSError as e:
+                # Este código só é alcançado se os.execv falhar.
+                print(f"Erro ao iniciar o servidor: {e}")
                 continue
 
-            if choice_int == 1:
-                if server_proc and server_proc.poll() is None:
-                    print("O servidor já está rodando.")
-                else:
-                    try:
-                        server_proc = start_server()
-                        if server_proc:
-                            print("Servidor iniciado. Você pode iniciar um cliente em outro terminal ou neste mesmo.")
-                    except Exception as e:
-                        print(f"[ERRO] Não foi possível iniciar o servidor: {e}")
-            elif choice_int == 2:
-                print("\n--- Iniciar Cliente ---")
+        elif choice == '2':
+            print("\n--- Iniciar Cliente ---")
+            port_str = input("Digite o número da porta do servidor ngrok: ")
+            if not port_str.isdigit():
+                print("Porta inválida. Por favor, digite apenas números.")
+                continue
 
-                port_str = input(f"Digite o número da porta do servidor ngrok (5 dígitos, ex: {SERVER_PORT}): ")
-
-                
-                print("Iniciando o cliente...")
-                client_command = [sys.executable, CLIENT_PATH, port_str]
-                client_process = subprocess.Popen(
-                    client_command,
-                    cwd=PROJECT_ROOT
-                )
-                client_process.wait() # Espera o cliente encerrar
-                print("Cliente encerrado.")
-            elif choice == '3':
-                print("Saindo...")
-                break
-            else:
-                print("Opção inválida. Tente novamente.")
-
-    except KeyboardInterrupt:
-        print("\nEncerrando o programa...")
-    finally:
-        if server_proc and server_proc.poll() is None:
-            print("Encerrando o servidor de chat...")
-            server_proc.terminate()
+            print("Iniciando o cliente... O terminal será dedicado a ele.")
             try:
-                server_proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                print("Servidor não encerrou graciosamente, forçando encerramento...")
-                server_proc.kill()
-            print("Servidor encerrado.")
+                # Constrói os argumentos para o cliente.
+                args = [sys.executable, CLIENT_PATH, port_str]
+                os.execv(sys.executable, args)
+            except OSError as e:
+                # Este código só é alcançado se os.execv falhar.
+                print(f"Erro ao iniciar o cliente: {e}")
+                continue
+
+        elif choice == '3':
+            print("Saindo...")
+            break
+        else:
+            print("Opção inválida. Tente novamente.")
 
 if __name__ == "__main__":
     main()

@@ -49,6 +49,7 @@ def broadcast(msg, room, sender=None):
 
 def _handle_register(sock):
     sock.send("\n--- REGISTRAR NOVO USUÁRIO ---\n".encode(ENCODING))
+    # Pede ao cliente para digitar usuário e senha em uma única linha, separados por espaço.
     sock.send("Digite o usuário e a senha, separados por espaço (ex: novo_usuario 12345): ".encode(ENCODING))
     
     # Recebe a resposta do cliente (ex: "novo_usuario 12345")
@@ -141,7 +142,6 @@ def _handle_create_room(sock):
             sock.send(f"\nSala '{room_name}' criada com sucesso!\n".encode(ENCODING))
         else:
             sock.send(f"\nErro: Sala '{room_name}' já existe ou ocorreu um problema na criação.\n".encode(ENCODING))
-
 
 def _handle_join_room(sock):
     sock.send("\n--- ENTRAR EM SALA ---\n".encode(ENCODING))
