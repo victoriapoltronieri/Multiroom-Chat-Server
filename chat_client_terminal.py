@@ -1,7 +1,7 @@
 import socket
 import threading
 import sys
-import os  # Adicionado para os._exit()
+import os
 import ssl
 
 # Configurações do servidor

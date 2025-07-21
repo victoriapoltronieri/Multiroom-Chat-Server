@@ -16,7 +16,7 @@ O foco do projeto é demonstrar conceitos fundamentais de redes de computadores,
 - **Banco de Dados:** Módulo `sqlite3` da biblioteca padrão para criar e gerenciar o banco de dados local.
 - **Segurança:** Módulo `hashlib` da biblioteca padrão para gerar hashes SHA256 das senhas.
 - **Estrutura do Projeto:** O projeto é gerenciado com `poetry` para um controle de dependências limpo, embora não utilize bibliotecas externas além da padrão do Python.
-
+- **Túnel de Rede Externo:** ngrok para expor o servidor local à internet de forma segura e acessível remotamente (via túnel TCP).
 ---
 
 ## Como Executar
@@ -41,7 +41,13 @@ O projeto foi projetado para ser executado em múltiplos terminais usando um lan
     poetry install
     ```
 
-3.  **Inicie o Servidor:**
+3. Entre no ambiente do poetry:
+
+	```bash
+	poetry shell
+	```
+
+4.  **Inicie o Servidor:**
     - Abra um terminal e digite:
 
     ```bash
@@ -49,7 +55,7 @@ O projeto foi projetado para ser executado em múltiplos terminais usando um lan
     ```
     - No menu que aparecer, digite `1` e pressione Enter. O terminal será então dedicado a rodar o servidor e exibir seus logs.
 
-4.  **Inicie um Cliente:**
+5.  **Inicie um Cliente:**
     - Abra um **novo** terminal e digite:
 
     ```bash
@@ -63,7 +69,7 @@ O projeto foi projetado para ser executado em múltiplos terminais usando um lan
 
 ## Como Testar
 
-Após iniciar o servidor e pelo menos dois clientes seguindo as instruções acima, siga este fluxo para testar todas as funcionalidades principais: 
+Após iniciar o servidor e pelo menos dois clientes seguindo as instruções acima, siga este fluxo para testar todas as funcionalidades principais:
 
 1.  **Registro de Usuário:**
     - Em um dos clientes, no menu inicial, escolha a opção `1` para registrar.
@@ -106,13 +112,19 @@ Após iniciar o servidor e pelo menos dois clientes seguindo as instruções aci
 - **Interface de Linha de Comando (CLI):** Menu interativo e contextual para uma navegação clara e intuitiva.
 - **Persistência de Dados:** Uso de um banco de dados SQLite (`chat.db`) para armazenar usuários e salas.
 - **Concorrência:** Servidor multithread capaz de gerenciar múltiplos clientes simultaneamente.
-
+- **Interconectividade:** Com o servidor hospedado no ngrok é possível que várias pessoas conectadas a redes distintas se conectem na sala de chat apenas com o número da porta utilizada pelo ngrok.
+- **Codificação das mensagens:** Com `.ENCODING` as mensagens enviadas são sempre codificadas ṕantes do seu envio.
 ---
 
 ## Possíveis Melhorias Futuras
 
-- **Canais Cifrados (TLS/SSL):** Envolver os sockets com o módulo `ssl` para cifrar toda a comunicação.
-- **Mensagens Privadas:** Implementar um comando `/whisper <usuario> <mensagem>` para mensagens diretas.
-- **Interface Gráfica (GUI):** Desenvolver um cliente com `PyQt` ou `Tkinter` para uma experiência de usuário mais rica.
-- **Histórico de Mensagens:** Salvar e carregar o histórico de mensagens das salas no banco de dados.
-- **Testes Automatizados:** Criar testes unitários e de integração para validar a lógica do sistema.
+- **Mensagens Privadas:** – Implementar um comando para possibilitar mensagens diretas.
+- **Histórico de Mensagens:** – Salvar e carregar o histórico de mensagens das salas no banco de dados.
+- **Interface de Usuário** – cliente gráfico construído com PyQt ou Tkinter.
+É possível criar uma interface gráfica para o usuário afim de facilitar a utilização da aplicação, e tornar a experiência mais rica.
+- **Implementação** – criação de testes unitários com pytest.
+É possível criar testes para garantir que a aplicação esteja funcionando corretamente.
+- **Documentação** – criação de documentação com Sphinx;
+É possível adicionar Docstrings e criar documentação para explicar como a aplicação funciona e como ela pode ser utilizada.
+- **Segurança** – implementação de controles de segurança;
+É possível adicionar controles de segurança para garantir que os dados estejam seguros, como senhas, usuários, chaves das salas.

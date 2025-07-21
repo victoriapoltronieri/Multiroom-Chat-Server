@@ -5,10 +5,6 @@ description = "Second project of the Computers Network course"
 authors = ["vpoltron <victoriapoltronieri@hotmail.com>"]
 readme = "README.md"
 
-[tool.black]
-line-length = 88
-target-version = ['py38']
-
 [tool.poetry.dependencies]
 python = "^3.8"
 
