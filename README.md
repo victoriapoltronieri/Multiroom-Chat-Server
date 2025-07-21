@@ -2,7 +2,7 @@
 
 ## Descrição
 
-Este projeto implementa um sistema de chat cliente-servidor robusto e concorrente, desenvolvido em Python. Ele permite que múltiplos usuários se registrem, façam login e interajam em tempo real dentro de diferentes salas de chat. O sistema utiliza sockets TCP para comunicação, `threading` para gerenciar múltiplos clientes simultaneamente e um banco de dados SQLite para persistir informações de usuários e salas.
+Este projeto implementa um sistema de chat cliente-servidor desenvolvido em Python. Ele permite que múltiplos usuários se registrem, façam login e interajam em tempo real dentro de diferentes salas de chat. O sistema utiliza sockets TCP para comunicação, `threading` para gerenciar múltiplos clientes simultaneamente e um banco de dados SQLite para persistir informações de usuários e salas.
 
 O foco do projeto é demonstrar conceitos fundamentais de redes de computadores, como a arquitetura cliente-servidor, concorrência, persistência de dados e a criação de um protocolo de aplicação simples baseado em texto.
 
@@ -27,6 +27,7 @@ O foco do projeto é demonstrar conceitos fundamentais de redes de computadores,
 - **Python 3.8 ou superior.**
 - **Poetry** (gerenciador de dependências). Se não o tiver, instale com `pip install poetry`.
 - **Certificados SSL:** Os arquivos `cert.pem` e `key.pem` devem estar presentes no diretório raiz do projeto para comunicação SSL.
+- **Ngrok:** Expoẽ o servidor local a internet para permitir a comunicação entre usuários.
 
 ### Instruções de Execução
 
@@ -40,6 +41,7 @@ O projeto foi projetado para ser executado em múltiplos terminais usando um lan
 
 2.  **Instale as Dependências (via Poetry):**
     ```bash
+    snap install ngrok
     poetry install
     ```
 
@@ -49,8 +51,10 @@ O projeto foi projetado para ser executado em múltiplos terminais usando um lan
 	```
 
 4. **Configure os Certificados SSL:**
-   - Os arquivos `cert.pem` e `key.pem` já estão incluídos no projeto para desenvolvimento
-   - Para produção, gere novos certificados SSL seguindo as instruções na seção "Configuração SSL"
+   ```bash
+   openssl req -new -x509 -days 365 -nodes -out cert.pem -keyout key.pem
+   ```
+   - Gere novos certificados SSL.
 
 5.  **Inicie o Servidor:**
     - Abra um terminal e digite:
@@ -92,20 +96,6 @@ O projeto inclui certificados SSL auto-assinados para desenvolvimento:
 
 - **`cert.pem`:** Certificado público do servidor
 - **`key.pem`:** Chave privada do servidor
-
-⚠️ **Importante:** Os certificados incluídos são apenas para desenvolvimento. Para produção, você deve gerar novos certificados.
-
-### Gerando Novos Certificados (Opcional)
-
-Para gerar novos certificados SSL auto-assinados:
-
-```bash
-# Gerar chave privada
-openssl genrsa -out key.pem 2048
-
-# Gerar certificado auto-assinado válido por 365 dias
-openssl req -new -x509 -key key.pem -out cert.pem -days 365
-```
 
 Durante a geração, você será solicitado a fornecer informações como país, estado, cidade, etc. Para desenvolvimento, você pode usar valores fictícios.
 
@@ -249,16 +239,6 @@ Após iniciar o servidor e pelo menos dois clientes seguindo as instruções aci
     - Observe nos logs do cliente as mensagens: `[INFO] Handshake SSL bem-sucedido com o servidor`
     - Todas as comunicações entre cliente e servidor estão agora criptografadas
     - Teste desconectar e reconectar clientes para verificar se o handshake SSL funciona consistentemente
-    
-9.  **Teste de Conexão Remota com ngrok (Opcional):**
-    - Inicie o servidor normalmente
-    - Em outro terminal, inicie o túnel ngrok: `ngrok tcp 12345`
-    - Observe a porta fornecida pelo ngrok (ex: `tcp://0.tcp.ngrok.io:12345`)
-    - Inicie um cliente em outra máquina ou rede
-    - Quando solicitado, insira a porta fornecida pelo ngrok
-    - Verifique se a conexão é estabelecida com sucesso
-    - Teste o registro, login e troca de mensagens através da conexão remota
-
 ---
 
 ## Funcionalidades Implementadas
@@ -272,8 +252,6 @@ Após iniciar o servidor e pelo menos dois clientes seguindo as instruções aci
 - **Concorrência:** Servidor multithread capaz de gerenciar múltiplos clientes simultaneamente.
 - **Interconectividade:** Com o servidor hospedado no ngrok é possível que várias pessoas conectadas a redes distintas se conectem na sala de chat apenas com o número da porta fornecida pelo túnel ngrok, sem necessidade de configuração de roteadores ou firewalls.
 - **Codificação das mensagens:** Com `.ENCODING` as mensagens enviadas são sempre codificadas antes do seu envio.
-- **Tratamento de Erros SSL:** Captura e tratamento adequado de erros relacionados a SSL tanto no servidor quanto no cliente.
-- **Certificados Auto-assinados:** Suporte para certificados SSL auto-assinados para desenvolvimento e testes.
 ---
 
 ## Possíveis Melhorias Futuras
@@ -286,11 +264,3 @@ Após iniciar o servidor e pelo menos dois clientes seguindo as instruções aci
 É possível criar testes para garantir que a aplicação esteja funcionando corretamente.
 - **Documentação** – criação de documentação com Sphinx;
 É possível adicionar Docstrings e criar documentação para explicar como a aplicação funciona e como ela pode ser utilizada.
-- **Segurança** – implementação de controles de segurança;
-É possível adicionar controles de segurança para garantir que os dados estejam seguros, como senhas, usuários, chaves das salas.- **Ce
-rtificados SSL de Produção** – implementação de certificados SSL válidos;
-É possível implementar suporte para certificados SSL de autoridades certificadoras para uso em produção.
-- **Autenticação de Cliente SSL** – implementação de autenticação mútua SSL;
-É possível implementar autenticação mútua SSL onde clientes também precisam de certificados.- **Interfac
-e Web para ngrok** – implementação de interface web para gerenciar túneis;
-É possível criar uma interface web para gerenciar os túneis ngrok, facilitando o compartilhamento de acesso e monitoramento de conexões remotas.
