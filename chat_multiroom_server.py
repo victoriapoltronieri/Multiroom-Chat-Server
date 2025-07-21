@@ -32,20 +32,29 @@ lock = threading.Lock()
 #     return hashlib.sha256(password.encode(ENCODING)).hexdigest()
 
 def broadcast(msg, room, sender=None):
-    with lock:
-        for client in rooms.get(room, set()):
-            if client != sender:
-                try:
-                    client.send(msg.encode(ENCODING))
-                except Exception as e:
-                    # Remove o cliente da sala e do user_rooms se houver erro no envio
-                    if client in rooms.get(room, set()):
-                        rooms[room].remove(client)
-                    if client in user_rooms and user_rooms[client] == room:
-                        del user_rooms[client]
-                    # Opcional: fechar o socket do cliente se o erro for grave
-                    # client.close()
-                    pass
+    """
+    Envia uma mensagem para TODOS os clientes em uma sala.
+    IMPORTANTE: Esta função deve ser chamada de dentro de um bloco `with lock:`.
+    """
+    # Garante que a mensagem sempre termine com uma nova linha para exibição correta.
+    if not msg.endswith('\n'):
+        msg += '\n'
+    
+    dead_sockets = []
+    # Itera sobre uma cópia da lista de clientes para evitar erros de iteração.
+    for client in list(rooms.get(room, [])):
+        if client != sender:
+            try:
+                client.send(msg.encode(ENCODING))
+            except Exception as e:
+                print(f"[INFO] Erro ao enviar para {clients.get(client, 'desconhecido')}. Marcando para remoção: {e}")
+                dead_sockets.append(client)
+    
+    # Remove os sockets mortos após a iteração.
+    for dead_socket in dead_sockets:
+        _handle_leave_room(dead_socket, silent=True)
+
+
 
 def _handle_register(sock):
     sock.send("\n--- REGISTRAR NOVO USUÁRIO ---\n".encode(ENCODING))
@@ -182,7 +191,7 @@ def _handle_join_room(sock):
         
         # Se o usuário já estiver em uma sala, remove-o da sala antiga primeiro.
         if sock in user_rooms:
-            _handle_leave_room(sock)
+            _handle_leave_room(sock, silent=True)
 
         # Ativa a sala se for a primeira pessoa a entrar.
         if room_name not in rooms:
@@ -191,17 +200,29 @@ def _handle_join_room(sock):
         # Adiciona o usuário à nova sala.
         rooms[room_name].add(sock)
         user_rooms[sock] = room_name
-        broadcast(f"{clients[sock]} entrou na sala.", room_name, sock)
-        sock.send(f"\nVocê entrou na sala '{room_name}'.\n".encode(ENCODING))
-        return True
+        
+        # Notifica todos na sala (exceto o novo usuário) sobre a entrada.
+        broadcast(f"*** {clients[sock]} entrou na sala. ***", room_name, sock)
 
-def _handle_leave_room(sock):
-    with lock:
-        room = user_rooms.pop(sock, None)
-        if room and sock in rooms[room]:
-            rooms[room].remove(sock)
-            broadcast(f"{clients[sock]} saiu da sala.", room, sock)
-    sock.send("\nVocê saiu da sala.\n".encode(ENCODING))
+    # Envia a confirmação para o próprio usuário FORA do lock.
+    sock.send(f"\nVocê entrou na sala '{room_name}'.\n".encode(ENCODING))
+    return True
+
+def _handle_leave_room(sock, silent=False):
+    """
+    Remove um cliente de uma sala. 
+    IMPORTANTE: Esta função deve ser chamada de dentro de um bloco `with lock:`.
+    """
+    room = user_rooms.pop(sock, None)
+    if room and sock in rooms.get(room, set()):
+        rooms[room].remove(sock)
+        # Notifica os outros que o usuário saiu.
+        broadcast(f"*** {clients.get(sock, 'Um usuário')} saiu da sala. ***", room, sock)
+    if not silent:
+        try:
+            sock.send("\nVocê saiu da sala.\n".encode(ENCODING))
+        except Exception as e:
+            print(f"[INFO] Não foi possível notificar cliente sobre saída da sala: {e}")
 
 def _handle_chat_mode(sock):
     sock.send("\n--- MODO CHAT ---\n".encode(ENCODING))
@@ -218,12 +239,17 @@ def _handle_chat_mode(sock):
                 _handle_leave_room(sock)
                 return True # Voltar ao menu principal após sair da sala
             else:
-                room = user_rooms.get(sock)
-                if room:
-                    msg = f"[{clients[sock]}@{room}]: {data}"
-                    broadcast(msg, room, sock)
-                else:
-                    sock.send("Você não está em uma sala. Digite /menu para voltar ao menu principal.\n".encode(ENCODING))
+                with lock:
+                    room = user_rooms.get(sock)
+                    if room:
+                        # Formata a mensagem e envia para todos na sala, exceto o remetente.
+                        msg = f"[{clients[sock]}@{room}]: {data.strip()}"
+                        broadcast(msg, room, sock)
+                    else:
+                        # Esta parte é executada fora do lock para evitar deadlock
+                        pass
+                if not room:
+                     sock.send("Você não está em uma sala. Digite /menu para voltar ao menu principal.\n".encode(ENCODING))
         except Exception as e:
             # print(f"Erro no modo chat para {clients.get(sock, 'desconhecido')}: {e}")
             return False # Erro, desconectar cliente
@@ -283,7 +309,8 @@ Sua escolha:
                     if _handle_join_room(sock):
                         current_state = "IN_CHAT_ROOM"
                 elif choice == '4': # Sair da Sala Atual
-                    _handle_leave_room(sock)
+                    with lock:
+                        _handle_leave_room(sock)
                 elif choice == '5': # Sair (Desconectar)
                     break # Sai do loop e desconecta o cliente
                 else:
@@ -296,17 +323,21 @@ Sua escolha:
                     current_state = "MAIN_MENU"
 
     except Exception as e:
-        # print(f"Erro no handle_client para {clients.get(sock, 'desconhecido')}: {e}")
-        pass # Ignora erros para evitar que o servidor caia por um cliente
+        # Aumenta a visibilidade de erros fatais na thread do cliente.
+        print(f"[ERRO FATAL] na thread para {clients.get(sock, 'desconhecido')}: {e}")
     finally:
+        # Bloco de limpeza robusto para quando um cliente desconecta.
         with lock:
             user = clients.pop(sock, None)
             room = user_rooms.pop(sock, None)
-            if room:
+            if room and user and rooms.get(room):
+                print(f"[INFO] Limpando {user} da sala {room}.")
                 rooms[room].discard(sock)
-                if user: # Só broadcast se o usuário for conhecido
-                    broadcast(f"🔕 {user} saiu da sala.", room, sock)
-            authenticated.discard(sock)
+                # Notifica os outros que o usuário se desconectou.
+                broadcast(f"🔕 *** {user} desconectou-se. ***", room)
+            
+            if sock in authenticated:
+                authenticated.discard(sock)
         sock.close()
 
 # === MAIN ===
