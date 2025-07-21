@@ -1,12 +1,14 @@
 import sqlite3
 import hashlib
 
-DB_NAME = 'chat.db'
-ENCODING = 'utf-8'
+DB_NAME = "chat.db"
+ENCODING = "utf-8"
+
 
 def hash_password(password):
     """Gera o hash de uma senha usando SHA256."""
     return hashlib.sha256(password.encode(ENCODING)).hexdigest()
+
 
 def init_db():
     """
@@ -14,28 +16,33 @@ def init_db():
     """
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
+
     # Tabela de usuários
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL
         )
-    """)
-    
+    """
+    )
+
     # Tabela de salas
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS rooms (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
             is_private BOOLEAN NOT NULL DEFAULT FALSE,
             password_hash TEXT
         )
-    """)
-    
+    """
+    )
+
     conn.commit()
     conn.close()
+
 
 def add_user(username, password):
     """
@@ -46,13 +53,17 @@ def add_user(username, password):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_h))
+        cursor.execute(
+            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+            (username, password_h),
+        )
         conn.commit()
         return True
     except sqlite3.IntegrityError:
         return False
     finally:
         conn.close()
+
 
 def get_user_hash(username):
     """
@@ -66,12 +77,14 @@ def get_user_hash(username):
     conn.close()
     return result[0] if result else None
 
+
 def check_user_credentials(username, password):
     """Verifica as credenciais de um usuário comparando a senha fornecida com o hash armazenado."""
     stored_hash = get_user_hash(username)
     if not stored_hash:
         return False
     return stored_hash == hash_password(password)
+
 
 def create_room(name, password=None):
     """
@@ -81,13 +94,13 @@ def create_room(name, password=None):
     """
     is_private = password is not None
     password_h = hash_password(password) if is_private else None
-    
+
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
         cursor.execute(
             "INSERT INTO rooms (name, is_private, password_hash) VALUES (?, ?, ?)",
-            (name, is_private, password_h)
+            (name, is_private, password_h),
         )
         conn.commit()
         return True
@@ -95,6 +108,7 @@ def create_room(name, password=None):
         return False
     finally:
         conn.close()
+
 
 def get_rooms():
     """
@@ -107,6 +121,7 @@ def get_rooms():
     conn.close()
     return rooms
 
+
 def get_room_details(name):
     """
 
@@ -115,7 +130,9 @@ def get_room_details(name):
     """
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT name, is_private, password_hash FROM rooms WHERE name = ?", (name,))
+    cursor.execute(
+        "SELECT name, is_private, password_hash FROM rooms WHERE name = ?", (name,)
+    )
     details = cursor.fetchone()
     conn.close()
     return details

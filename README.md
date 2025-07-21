@@ -63,7 +63,7 @@ O projeto foi projetado para ser executado em múltiplos terminais usando um lan
 
 ## Como Testar
 
-Após iniciar o servidor e pelo menos dois clientes seguindo as instruções acima, siga este fluxo para testar todas as funcionalidades principais:
+Após iniciar o servidor e pelo menos dois clientes seguindo as instruções acima, siga este fluxo para testar todas as funcionalidades principais: 
 
 1.  **Registro de Usuário:**
     - Em um dos clientes, no menu inicial, escolha a opção `1` para registrar.

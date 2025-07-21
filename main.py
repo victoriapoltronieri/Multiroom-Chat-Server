@@ -3,8 +3,9 @@ import sys
 
 # Define o caminho para o diretório do projeto
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-SERVER_PATH = os.path.join(PROJECT_ROOT, 'chat_multiroom_server.py')
-CLIENT_PATH = os.path.join(PROJECT_ROOT, 'chat_client_terminal.py')
+SERVER_PATH = os.path.join(PROJECT_ROOT, "chat_multiroom_server.py")
+CLIENT_PATH = os.path.join(PROJECT_ROOT, "chat_client_terminal.py")
+
 
 def main():
     """
@@ -13,17 +14,19 @@ def main():
     entregando o controle total do terminal para o script escolhido.
     """
     while True:
-        print("""
+        print(
+            """
 ----------------------------------------
 |        Menu Principal                |
 ----------------------------------------
 | 1. Iniciar Servidor                  |
 | 2. Iniciar Cliente                   |
 | 3. Sair                              |
-----------------------------------------""")
+----------------------------------------"""
+        )
         choice = input("Escolha uma opção: ")
 
-        if choice == '1':
+        if choice == "1":
             print("Iniciando o servidor... O terminal será dedicado a ele.")
             try:
                 # Constrói os argumentos para a chamada de sistema.
@@ -37,7 +40,7 @@ def main():
                 print(f"Erro ao iniciar o servidor: {e}")
                 continue
 
-        elif choice == '2':
+        elif choice == "2":
             print("\n--- Iniciar Cliente ---")
             port_str = input("Digite o número da porta do servidor ngrok: ")
             if not port_str.isdigit():
@@ -54,11 +57,12 @@ def main():
                 print(f"Erro ao iniciar o cliente: {e}")
                 continue
 
-        elif choice == '3':
+        elif choice == "3":
             print("Saindo...")
             break
         else:
             print("Opção inválida. Tente novamente.")
+
 
 if __name__ == "__main__":
     main()
