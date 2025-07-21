@@ -270,16 +270,19 @@ Sua escolha:
                     sock.send("\nOpção inválida. Por favor, escolha 1 ou 2.\n".encode(ENCODING))
             
             elif current_state == "MAIN_MENU":
-                # Constrói o menu dinamicamente.
+                # Constrói o menu dinamicamente com base no estado do usuário.
                 menu_options = [
                     "1. Listar Salas",
                     "2. Criar Sala",
                     "3. Entrar em Sala",
-                    "4. Sair da Sala Atual",
-                    "5. Sair (Desconectar)"
+                    "4. Sair (Desconectar)"
                 ]
-                # Se o usuário estiver em uma sala, adiciona a opção para voltar.
-                if sock in user_rooms:
+                
+                in_room = sock in user_rooms
+                if in_room:
+                    # Se estiver em uma sala, insere as opções contextuais na posição correta.
+                    current_room_name = user_rooms[sock]
+                    menu_options.insert(4, f"5. Sair da Sala Atual ({current_room_name})")
                     menu_options.insert(5, "6. Voltar para o Chat")
 
                 menu_header = "\n----------------------------------------\n|        Menu Principal                |\n----------------------------------------\n"
@@ -291,19 +294,19 @@ Sua escolha:
 
                 choice = sock.recv(1024).decode(ENCODING).strip()
 
-                if choice == '1': # Listar Salas
+                if choice == '1':
                     _handle_list_rooms(sock)
-                elif choice == '2': # Criar Sala
+                elif choice == '2':
                     _handle_create_room(sock)
-                elif choice == '3': # Entrar em Sala
+                elif choice == '3':
                     if _handle_join_room(sock):
                         current_state = "IN_CHAT_ROOM"
-                elif choice == '4': # Sair da Sala Atual
+                elif choice == '4': # Sair (Desconectar)
+                    break 
+                elif choice == '5' and in_room: # Sair da Sala Atual
                     with lock:
                         _handle_leave_room(sock)
-                elif choice == '5': # Sair (Desconectar)
-                    break # Sai do loop e desconecta o cliente
-                elif choice == '6' and sock in user_rooms: # Voltar para o Chat
+                elif choice == '6' and in_room: # Voltar para o Chat
                     current_state = "IN_CHAT_ROOM"
                 else:
                     sock.send("\nOpção inválida. Tente novamente.\n".encode(ENCODING))
@@ -326,7 +329,7 @@ Sua escolha:
                 print(f"[INFO] Limpando {user} da sala {room}.")
                 rooms[room].discard(sock)
                 # Notifica os outros que o usuário se desconectou.
-                broadcast(f"🔕 *** {user} desconectou-se. ***", room)
+                broadcast(f"*** {user} desconectou-se. ***", room)
             
             if sock in authenticated:
                 authenticated.discard(sock)
