@@ -16,7 +16,7 @@ O foco do projeto é demonstrar conceitos fundamentais de redes de computadores,
 - **Banco de Dados:** Módulo `sqlite3` da biblioteca padrão para criar e gerenciar o banco de dados local.
 - **Segurança:** Módulo `hashlib` da biblioteca padrão para gerar hashes SHA256 das senhas.
 - **Estrutura do Projeto:** O projeto é gerenciado com `poetry` para um controle de dependências limpo, embora não utilize bibliotecas externas além da padrão do Python.
-
+- **Túnel de Rede Externo:** ngrok para expor o servidor local à internet de forma segura e acessível remotamente (via túnel TCP).
 ---
 
 ## Como Executar
@@ -113,7 +113,7 @@ Após iniciar o servidor e pelo menos dois clientes seguindo as instruções aci
 - **Persistência de Dados:** Uso de um banco de dados SQLite (`chat.db`) para armazenar usuários e salas.
 - **Concorrência:** Servidor multithread capaz de gerenciar múltiplos clientes simultaneamente.
 - **Interconectividade:** Com o servidor hospedado no ngrok é possível que várias pessoas conectadas a redes distintas se conectem na sala de chat apenas com o número da porta utilizada pelo ngrok.
-
+- **Codificação das mensagens:** Com `.ENCODING` as mensagens enviadas são sempre codificadas ṕantes do seu envio.
 ---
 
 ## Possíveis Melhorias Futuras
